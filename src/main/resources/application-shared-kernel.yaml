@@ -1,0 +1,50 @@
+arda:
+  shared:
+    multi-tenancy:
+      enabled: true
+      tenant-header: X-Tenant-ID
+      central-platform-url: http://localhost:8000
+      datasource-cache:
+        max-size: 100
+        ttl-minutes: 60
+      connection-pool:
+        maximum-pool-size: 5
+        minimum-idle: 2
+        connection-timeout: 30000
+    security:
+      enabled: true
+      jwt:
+        issuer-uri: http://localhost:8081/realms/arda
+        jwk-set-uri: ${arda.shared.security.jwt.issuer-uri}/protocol/openid-connect/certs
+      cors:
+        allowed-origins: "*"
+        allowed-methods: "GET,POST,PUT,DELETE,PATCH,OPTIONS"
+        allowed-headers: "*"
+        max-age: 3600
+    caching:
+      enabled: true
+      redis:
+        host: localhost
+        port: 6379
+        timeout: 60000
+    event-bus:
+      enabled: true
+      type: spring # spring or kafka
+      kafka:
+        bootstrap-servers: localhost:9092
+        topic-prefix: arda
+    rate-limit:
+      enabled: true
+      default-requests-per-minute: 60
+      storage: redis # redis or memory
+    migration:
+      auto-migrate: true
+      fail-on-error: true
+      parallel: false
+
+# Disable Liquibase auto-run at startup (we handle it manually per tenant)
+spring:
+  liquibase:
+    enabled: false
+  jpa:
+    open-in-view: false

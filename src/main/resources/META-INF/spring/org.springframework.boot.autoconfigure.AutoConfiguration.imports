@@ -1,0 +1,5 @@
+vn.io.arda.shared.config.ArdaSharedAutoConfiguration
+vn.io.arda.shared.config.MultiTenancyAutoConfiguration
+vn.io.arda.shared.config.SecurityAutoConfiguration
+vn.io.arda.shared.config.CachingAutoConfiguration
+vn.io.arda.shared.config.EventBusAutoConfiguration
