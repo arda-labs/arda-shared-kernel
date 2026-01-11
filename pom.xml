@@ -14,19 +14,39 @@
 	<packaging>jar</packaging>
 	<name>arda-shared-kernel</name>
 	<description>Core Shared Library for Arda Platform (Multi-tenancy, Dynamic DB Routing, Common Utils)</description>
-	<url/>
+	<url>https://github.com/arda-labs/arda-shared-kernel</url>
+
 	<licenses>
-		<license/>
+		<license>
+			<name>Apache License, Version 2.0</name>
+			<url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+			<distribution>repo</distribution>
+		</license>
 	</licenses>
+
 	<developers>
-		<developer/>
+		<developer>
+			<name>Arda Development Team</name>
+			<organization>Arda Labs</organization>
+			<organizationUrl>https://arda.io.vn</organizationUrl>
+		</developer>
 	</developers>
+
 	<scm>
-		<connection/>
-		<developerConnection/>
-		<tag/>
-		<url/>
+		<connection>scm:git:git://github.com/arda-labs/arda-shared-kernel.git</connection>
+		<developerConnection>scm:git:ssh://github.com/arda-labs/arda-shared-kernel.git</developerConnection>
+		<url>https://github.com/arda-labs/arda-shared-kernel</url>
+		<tag>HEAD</tag>
 	</scm>
+
+	<distributionManagement>
+		<repository>
+			<id>github</id>
+			<name>GitHub Packages</name>
+			<url>https://maven.pkg.github.com/arda-labs/arda-shared-kernel</url>
+		</repository>
+	</distributionManagement>
+
 	<properties>
 		<java.version>21</java.version>
 	</properties>
