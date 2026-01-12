@@ -106,11 +106,24 @@ public class TenantDataSourceCache {
         if (dataSource instanceof HikariDataSource hikariDataSource) {
             try {
                 if (!hikariDataSource.isClosed()) {
+                    // Log active connections before closing
+                    int activeConnections = hikariDataSource.getHikariPoolMXBean().getActiveConnections();
+                    int totalConnections = hikariDataSource.getHikariPoolMXBean().getTotalConnections();
+                    int idleConnections = hikariDataSource.getHikariPoolMXBean().getIdleConnections();
+
+                    if (activeConnections > 0) {
+                        log.warn("Closing DataSource for tenant {} with {} active connections (total: {}, idle: {})",
+                                tenantId, activeConnections, totalConnections, idleConnections);
+                    }
+
                     hikariDataSource.close();
-                    log.debug("HikariDataSource closed for tenant: {}", tenantId);
+                    log.info("HikariDataSource successfully closed for tenant: {}", tenantId);
                 }
             } catch (Exception e) {
-                log.error("Error closing DataSource for tenant: {}", tenantId, e);
+                log.error("CRITICAL: Failed to close DataSource for tenant: {}. Potential connection leak! " +
+                        "Manual intervention may be required.", tenantId, e);
+                // Note: In production, you should integrate with monitoring/alerting system
+                // Example: metricsService.incrementCounter("datasource.cleanup.failure", "tenant", tenantId);
             }
         }
     }

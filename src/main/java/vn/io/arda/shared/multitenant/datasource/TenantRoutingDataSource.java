@@ -31,12 +31,11 @@ public class TenantRoutingDataSource extends AbstractRoutingDataSource {
 
     @Override
     protected DataSource determineTargetDataSource() {
-        String tenantId = TenantContext.getTenantId().orElse(null);
-
-        if (tenantId == null) {
-            log.warn("No tenant context available, using default datasource");
-            return super.determineTargetDataSource();
-        }
+        // CRITICAL: Multi-tenant SaaS requires tenant context for ALL database operations
+        // Rejecting requests without tenant prevents data leakage and ensures proper isolation
+        String tenantId = TenantContext.getTenantId()
+                .orElseThrow(() -> new vn.io.arda.shared.exception.InvalidTenantContextException(
+                        "Tenant context is required but not set. Please provide X-Tenant-ID header or valid JWT token with tenant claim."));
 
         try {
             // Get tenant configuration from central platform
@@ -48,6 +47,9 @@ public class TenantRoutingDataSource extends AbstractRoutingDataSource {
             log.trace("Routing to database for tenant: {}", tenantId);
             return dataSource;
 
+        } catch (vn.io.arda.shared.exception.TenantNotFoundException e) {
+            log.error("Tenant not found: {}", tenantId, e);
+            throw e;
         } catch (Exception e) {
             log.error("Error determining target datasource for tenant: {}", tenantId, e);
             throw new RuntimeException("Failed to route to tenant database: " + tenantId, e);

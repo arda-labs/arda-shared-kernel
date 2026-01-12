@@ -9,7 +9,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Error response for validation errors.
+ * Error response for validation errors with field-level details.
+ * Extends {@link ErrorResponse} with additional validation-specific information.
  *
  * @since 0.0.1
  */
@@ -20,9 +21,9 @@ public class ValidationErrorResponse extends ErrorResponse {
 
     @Builder(builderMethodName = "validationBuilder")
     public ValidationErrorResponse(java.time.Instant timestamp, int status, String error,
-                                   String message, String path, Map<String, Object> details,
+                                   String message, String path, String traceId, Map<String, Object> details,
                                    List<FieldError> fieldErrors) {
-        super(timestamp, status, error, message, path, details);
+        super(timestamp, status, error, message, path, traceId, details);
         this.fieldErrors = fieldErrors;
     }
 
