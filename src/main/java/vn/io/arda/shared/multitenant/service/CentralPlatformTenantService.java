@@ -2,6 +2,7 @@ package vn.io.arda.shared.multitenant.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
@@ -21,6 +22,7 @@ import java.util.List;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@ConditionalOnProperty(name = "arda.shared.multi-tenancy.enabled", havingValue = "true", matchIfMissing = true)
 public class CentralPlatformTenantService implements TenantMetadataService {
 
     private final MultiTenancyProperties properties;
