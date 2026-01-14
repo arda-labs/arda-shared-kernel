@@ -48,7 +48,11 @@
 	</distributionManagement>
 
 	<properties>
+		<maven.compiler.source>21</maven.compiler.source>
+		<maven.compiler.target>21</maven.compiler.target>
 		<java.version>21</java.version>
+		<source>21</source>
+		<target>21</target>
 	</properties>
 	<dependencies>
 		<!-- Spring Boot Starters -->

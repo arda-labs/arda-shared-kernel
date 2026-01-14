@@ -33,13 +33,26 @@ public class SecurityProperties {
     @Data
     public static class JwtConfig {
         /**
-         * JWT issuer URI (Keycloak realm URL).
+         * Base Keycloak server URL for multi-realm support.
+         * Used to dynamically construct JWK Set URIs for tenant-specific realms.
+         * Example: http://localhost:8081
+         *
+         * @since 0.0.2
          */
+        private String baseKeycloakUrl = "http://localhost:8081";
+
+        /**
+         * JWT issuer URI (Keycloak realm URL).
+         * @deprecated Use baseKeycloakUrl for multi-realm support. This field is kept for backward compatibility.
+         */
+        @Deprecated(since = "0.0.2")
         private String issuerUri = "http://localhost:8081/realms/arda";
 
         /**
          * JWK Set URI for token validation.
+         * @deprecated Use baseKeycloakUrl for multi-realm support. This field is kept for backward compatibility.
          */
+        @Deprecated(since = "0.0.2")
         private String jwkSetUri;
 
         /**

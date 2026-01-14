@@ -14,10 +14,13 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-import vn.io.arda.shared.security.jwt.KeycloakJwtConverter;
+import vn.io.arda.shared.security.filter.TenantJwtValidationFilter;
+import vn.io.arda.shared.security.jwt.JwtUtils;
+import vn.io.arda.shared.security.jwt.MultiRealmAuthenticationManagerResolver;
 import vn.io.arda.shared.security.properties.SecurityProperties;
 
 /**
@@ -36,11 +39,12 @@ import vn.io.arda.shared.security.properties.SecurityProperties;
 public class SecurityAutoConfiguration {
 
     private final SecurityProperties properties;
-    private final KeycloakJwtConverter jwtConverter;
+    private final MultiRealmAuthenticationManagerResolver authenticationManagerResolver;
+    private final JwtUtils jwtUtils;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        log.info("Configuring Security Filter Chain with JWT authentication");
+        log.info("Configuring Security Filter Chain with Multi-Realm JWT authentication");
 
         http
                 .csrf(AbstractHttpConfigurer::disable)
@@ -48,25 +52,51 @@ public class SecurityAutoConfiguration {
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/actuator/**", "/health", "/error").permitAll()
+                        .requestMatchers("/actuator/**", "/health", "/error", "/api/v1/public/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .oauth2ResourceServer(oauth2 -> oauth2
-                        .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtConverter))
-                );
+                        .authenticationManagerResolver(authenticationManagerResolver)
+                )
+                .addFilterAfter(tenantJwtValidationFilter(), UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
+    /**
+     * Creates TenantJwtValidationFilter bean.
+     * This filter validates that JWT tenant_id matches X-Tenant-ID header.
+     *
+     * @return TenantJwtValidationFilter instance
+     */
+    @Bean
+    public TenantJwtValidationFilter tenantJwtValidationFilter() {
+        return new TenantJwtValidationFilter(jwtUtils);
+    }
+
+    /**
+     * Legacy JwtDecoder bean for backward compatibility.
+     * Services using multi-realm should use MultiRealmAuthenticationManagerResolver instead.
+     *
+     * @return JwtDecoder for default realm
+     * @deprecated Use MultiRealmAuthenticationManagerResolver for multi-realm support
+     */
+    @Deprecated(since = "0.0.2")
     @Bean
     public JwtDecoder jwtDecoder() {
         String jwkSetUri = properties.getJwt().getJwkSetUri();
         if (jwkSetUri == null || jwkSetUri.isBlank()) {
-            jwkSetUri = properties.getJwt().getIssuerUri() +
-                    "/protocol/openid-connect/certs";
+            String issuerUri = properties.getJwt().getIssuerUri();
+            if (issuerUri != null && !issuerUri.isBlank()) {
+                jwkSetUri = issuerUri + "/protocol/openid-connect/certs";
+            } else {
+                // Fallback to base URL + default realm
+                jwkSetUri = properties.getJwt().getBaseKeycloakUrl() +
+                        "/realms/arda/protocol/openid-connect/certs";
+            }
         }
 
-        log.info("Configuring JwtDecoder with JWK Set URI: {}", jwkSetUri);
+        log.info("Configuring legacy JwtDecoder with JWK Set URI: {}", jwkSetUri);
         return NimbusJwtDecoder.withJwkSetUri(jwkSetUri).build();
     }
 
