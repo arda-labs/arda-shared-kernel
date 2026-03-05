@@ -43,7 +43,7 @@ public class TenantDataSourceCache {
      * Gets or creates a DataSource for the given tenant.
      *
      * @param tenantId the tenant ID
-     * @param config the datasource configuration
+     * @param config   the datasource configuration
      * @return the DataSource instance
      */
     public DataSource getOrCreate(String tenantId, TenantDataSourceConfig config) {
@@ -76,7 +76,7 @@ public class TenantDataSourceCache {
     }
 
     private DataSource createDataSource(String tenantId, TenantDataSourceConfig config) {
-        log.info("Creating new DataSource for tenant: {} ({})", tenantId, config.getDbType());
+        log.info("Creating new DataSource for tenant: {}", tenantId);
 
         HikariConfig hikariConfig = new HikariConfig();
         hikariConfig.setJdbcUrl(config.getJdbcUrl());
@@ -123,7 +123,8 @@ public class TenantDataSourceCache {
                 log.error("CRITICAL: Failed to close DataSource for tenant: {}. Potential connection leak! " +
                         "Manual intervention may be required.", tenantId, e);
                 // Note: In production, you should integrate with monitoring/alerting system
-                // Example: metricsService.incrementCounter("datasource.cleanup.failure", "tenant", tenantId);
+                // Example: metricsService.incrementCounter("datasource.cleanup.failure",
+                // "tenant", tenantId);
             }
         }
     }

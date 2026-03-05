@@ -4,7 +4,7 @@
 
 ## 📋 Tổng quan
 
-`arda-shared-kernel` là thư viện Java Spring Boot 4.0.1 (Java 21) cung cấp các tính năng nền tảng cho toàn bộ microservices trong hệ thống Arda:
+`arda-shared-kernel` là thư viện Java Spring Boot 3.5.9 (Java 21) cung cấp các tính năng nền tảng cho toàn bộ microservices trong hệ thống Arda:
 
 - ✅ **Multi-tenancy**: Database-per-Tenant với dynamic routing
 - ✅ **Security**: Keycloak JWT validation tích hợp sẵn

@@ -1,6 +1,8 @@
 package vn.io.arda.shared.security.annotation;
 
 import org.springframework.context.annotation.Import;
+import vn.io.arda.shared.config.InternalJwtSecurityConfig;
+import vn.io.arda.shared.config.LegacyKeycloakSecurityConfig;
 import vn.io.arda.shared.config.SecurityAutoConfiguration;
 
 import java.lang.annotation.*;
@@ -8,21 +10,27 @@ import java.lang.annotation.*;
 /**
  * Annotation to enable Arda security features in consuming applications.
  *
- * <p>Usage:</p>
- * <pre>{@code
- * @SpringBootApplication
- * @EnableArdaSecurity
- * public class MyApplication {
- *     // ...
+ * <p>
+ * Usage:
+ * </p>
+ * 
+ * <pre>
+ * {
+ *     &#64;code
+ *     &#64;SpringBootApplication
+ *     @EnableArdaSecurity
+ *     public class MyApplication {
+ *         // ...
+ *     }
  * }
- * }</pre>
+ * </pre>
  *
  * @since 0.0.1
  */
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
-@Import(SecurityAutoConfiguration.class)
+@Import({ SecurityAutoConfiguration.class, InternalJwtSecurityConfig.class, LegacyKeycloakSecurityConfig.class })
 public @interface EnableArdaSecurity {
 
     /**

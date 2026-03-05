@@ -5,11 +5,15 @@ import com.nimbusds.jwt.JWTParser;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationManagerResolver;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationProvider;
+import org.springframework.security.authentication.AuthenticationServiceException;
+import org.springframework.security.oauth2.jwt.JwtException;
+import org.springframework.security.oauth2.server.resource.InvalidBearerTokenException;
 import org.springframework.stereotype.Component;
 import vn.io.arda.shared.security.properties.SecurityProperties;
 
@@ -19,42 +23,23 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * Resolves AuthenticationManager based on JWT issuer for multi-realm support.
  * <p>
- * Each tenant has a dedicated Keycloak realm with a unique issuer URI.
- * This resolver extracts the issuer from the JWT token and creates/caches
- * a corresponding JwtDecoder for that realm.
+ * <strong>DEPRECATED:</strong> This class is part of the legacy
+ * Keycloak-per-service
+ * authentication model. In the V2 architecture, APISIX Gateway handles AuthN
+ * and signs Internal JWTs. Services should use {@code InternalJwtFilter}
+ * instead.
  * </p>
  *
- * <p><strong>Flow:</strong></p>
- * <ol>
- *   <li>Extract JWT from Authorization header</li>
- *   <li>Parse JWT to get issuer claim (iss)</li>
- *   <li>Check cache for existing JwtDecoder for this issuer</li>
- *   <li>If not cached, create new JwtDecoder with JWK Set URI for that realm</li>
- *   <li>Cache the JwtDecoder for future requests</li>
- *   <li>Return AuthenticationManager configured with the JwtDecoder</li>
- * </ol>
- *
- * <p><strong>Example:</strong></p>
- * <pre>
- * JWT with iss: "http://localhost:8081/realms/tenant-a"
- * → Creates JwtDecoder with JWK URI: "http://localhost:8081/realms/tenant-a/protocol/openid-connect/certs"
- * → Caches for reuse
- * </pre>
- *
- * <p><strong>Security:</strong></p>
- * <ul>
- *   <li>Only accepts issuers from configured baseKeycloakUrl</li>
- *   <li>Uses LRU cache to prevent memory exhaustion (max 100 realms)</li>
- *   <li>Thread-safe with ConcurrentHashMap</li>
- * </ul>
- *
- * @see org.springframework.security.authentication.AuthenticationManagerResolver
- * @see org.springframework.security.oauth2.jwt.JwtDecoder
+ * @see vn.io.arda.shared.security.filter.InternalJwtFilter
  * @since 0.0.2
+ * @deprecated Use Internal JWT mode (arda.shared.internal-jwt.enabled=true) for
+ *             gateway AuthN
  */
 @Slf4j
 @Component
 @RequiredArgsConstructor
+@Deprecated(since = "0.1.0", forRemoval = false)
+@ConditionalOnProperty(name = "arda.shared.internal-jwt.enabled", havingValue = "false", matchIfMissing = true)
 public class MultiRealmAuthenticationManagerResolver
         implements AuthenticationManagerResolver<HttpServletRequest> {
 
@@ -105,7 +90,19 @@ public class MultiRealmAuthenticationManagerResolver
             JwtAuthenticationProvider provider = new JwtAuthenticationProvider(jwtDecoder);
             provider.setJwtAuthenticationConverter(jwtConverter);
 
-            return provider::authenticate;
+            // Wrap authentication to handle dekoding errors (like 404 from Keycloak)
+            // gracefully as 401
+            return (authentication) -> {
+                try {
+                    return provider.authenticate(authentication);
+                } catch (AuthenticationServiceException e) {
+                    if (e.getCause() instanceof JwtException) {
+                        log.warn("JWT decoding failed for issuer {}: {}", issuer, e.getMessage());
+                        throw new InvalidBearerTokenException(e.getMessage(), e);
+                    }
+                    throw e;
+                }
+            };
 
         } catch (Exception e) {
             log.error("Failed to resolve authentication manager for JWT", e);

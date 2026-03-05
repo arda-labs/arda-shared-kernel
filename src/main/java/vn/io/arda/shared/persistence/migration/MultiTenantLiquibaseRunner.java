@@ -13,6 +13,7 @@ import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import vn.io.arda.shared.config.properties.ArdaMigrationProperties;
+import vn.io.arda.shared.multitenant.context.TenantContext;
 import vn.io.arda.shared.multitenant.dto.TenantInfo;
 import vn.io.arda.shared.multitenant.service.CentralPlatformTenantService;
 
@@ -21,14 +22,20 @@ import java.sql.Connection;
 import java.util.List;
 
 /**
- * Application runner that automatically runs Liquibase migrations for all tenants on startup.
+ * Application runner that automatically runs Liquibase migrations for all
+ * tenants on startup.
  * <p>
- * This runner queries all active tenants from the Central Platform service and executes
- * Liquibase changelog on each tenant's database. It only runs when multi-tenancy and
+ * This runner queries all active tenants from the Central Platform service and
+ * executes
+ * Liquibase changelog on each tenant's database. It only runs when
+ * multi-tenancy and
  * auto-migration are enabled.
  * </p>
  *
- * <p>Configuration example:</p>
+ * <p>
+ * Configuration example:
+ * </p>
+ * 
  * <pre>
  * arda:
  *   shared:
@@ -90,13 +97,22 @@ public class MultiTenantLiquibaseRunner implements ApplicationRunner {
 
     /**
      * Runs Liquibase migration for a specific tenant.
+     * <p>
+     * IMPORTANT: Must set TenantContext before calling
+     * routingDataSource.getConnection()
+     * so TenantRoutingDataSource can route to the correct tenant database.
+     * TenantContext is always cleared in the finally block to prevent thread-local
+     * leaks.
      *
      * @param tenant the tenant information
-     * @throws LiquibaseException if migration fails
+     * @throws Exception if migration fails
      */
     private void runMigrationForTenant(TenantInfo tenant) throws Exception {
         log.info("Running migration for tenant: {} ({})", tenant.getTenantId(), tenant.getName());
 
+        // CRITICAL: Set tenant context so TenantRoutingDataSource routes to the right
+        // DB
+        TenantContext.setTenantId(tenant.getTenantId());
         try (Connection connection = routingDataSource.getConnection()) {
             Database database = DatabaseFactory.getInstance()
                     .findCorrectDatabaseImplementation(new JdbcConnection(connection));
@@ -104,10 +120,8 @@ public class MultiTenantLiquibaseRunner implements ApplicationRunner {
             Liquibase liquibase = new Liquibase(
                     migrationProperties.getChangelogPath(),
                     new ClassLoaderResourceAccessor(),
-                    database
-            );
+                    database);
 
-            // Run update
             liquibase.update(migrationProperties.getContexts());
 
             log.info("Migration completed successfully for tenant: {}", tenant.getTenantId());
@@ -115,6 +129,9 @@ public class MultiTenantLiquibaseRunner implements ApplicationRunner {
         } catch (Exception e) {
             log.error("Migration failed for tenant: {}", tenant.getTenantId(), e);
             throw e;
+        } finally {
+            // Always clear tenant context to prevent thread-local leaks
+            TenantContext.clear();
         }
     }
 }

@@ -1,6 +1,9 @@
 package vn.io.arda.shared.event.tenant;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import vn.io.arda.shared.event.DomainEvent;
 
 import java.time.Instant;
@@ -12,17 +15,20 @@ import java.time.Instant;
  * @since 0.0.1
  */
 @Getter
+@NoArgsConstructor
 public class TenantCreatedEvent implements DomainEvent {
 
-    private final String tenantKey;
-    private final String displayName;
-    private final String dbType;
-    private final Instant occurredAt;
+    private final String eventType = "TENANT_CREATED";
+    private String tenantKey;
+    private String displayName;
+    private Instant occurredAt;
 
-    public TenantCreatedEvent(String tenantKey, String displayName, String dbType) {
+    @JsonCreator
+    public TenantCreatedEvent(
+            @JsonProperty("tenantKey") String tenantKey,
+            @JsonProperty("displayName") String displayName) {
         this.tenantKey = tenantKey;
         this.displayName = displayName;
-        this.dbType = dbType;
         this.occurredAt = Instant.now();
     }
 }

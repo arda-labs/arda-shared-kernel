@@ -2,6 +2,7 @@ package vn.io.arda.shared.persistence.entity;
 
 import jakarta.persistence.*;
 import lombok.Data;
+import org.hibernate.annotations.UuidGenerator;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
@@ -11,13 +12,30 @@ import java.util.UUID;
 
 /**
  * Base entity class for all domain entities.
- * Provides common fields: id, createdAt, updatedAt, version for optimistic locking, and soft delete flag.
+ * Provides common fields: id, createdAt, updatedAt, version for optimistic
+ * locking, and soft delete flag.
  *
- * <p><strong>Spring Data JPA Auditing:</strong></p>
+ * <p>
+ * <strong>UUID Strategy (PG18+):</strong>
+ * </p>
  * <ul>
- *   <li>{@code @CreatedDate} and {@code @LastModifiedDate} require {@code @EntityListeners(AuditingEntityListener.class)}</li>
- *   <li>Enable auditing in your configuration with {@code @EnableJpaAuditing}</li>
- *   <li>Timestamps are automatically managed by Spring Data JPA</li>
+ * <li>Uses Hibernate {@code @UuidGenerator(style = TIME)} → generates
+ * time-ordered UUIDs (RFC 9562 UUIDv7-like)</li>
+ * <li>Time-ordered UUIDs dramatically improve B-tree index locality and reduce
+ * fragmentation</li>
+ * <li>Combined with PG18's native {@code uuidv7()} for database-side
+ * defaults</li>
+ * </ul>
+ *
+ * <p>
+ * <strong>Spring Data JPA Auditing:</strong>
+ * </p>
+ * <ul>
+ * <li>{@code @CreatedDate} and {@code @LastModifiedDate} require
+ * {@code @EntityListeners(AuditingEntityListener.class)}</li>
+ * <li>Enable auditing in your configuration with
+ * {@code @EnableJpaAuditing}</li>
+ * <li>Timestamps are automatically managed by Spring Data JPA</li>
  * </ul>
  *
  * @since 0.0.1
@@ -28,7 +46,7 @@ import java.util.UUID;
 public abstract class BaseEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
+    @UuidGenerator(style = UuidGenerator.Style.TIME)
     @Column(name = "id", updatable = false, nullable = false)
     private UUID id;
 

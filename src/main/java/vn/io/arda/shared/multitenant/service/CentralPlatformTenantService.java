@@ -12,6 +12,7 @@ import vn.io.arda.shared.multitenant.model.TenantDataSourceConfig;
 import vn.io.arda.shared.multitenant.properties.MultiTenancyProperties;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * Implementation of TenantMetadataService that fetches tenant information
@@ -21,8 +22,7 @@ import java.util.List;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
-@ConditionalOnProperty(name = "arda.shared.multi-tenancy.enabled", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(name = "arda.shared.tenant-config.mode", havingValue = "rest", matchIfMissing = true)
 public class CentralPlatformTenantService implements TenantMetadataService {
 
     private final MultiTenancyProperties properties;
@@ -41,7 +41,7 @@ public class CentralPlatformTenantService implements TenantMetadataService {
 
         try {
             TenantDataSourceConfig config = restClient.get()
-                    .uri("/api/tenants/{tenantId}/datasource", tenantId)
+                    .uri("/v1/internal/tenants/config/{tenantId}", tenantId)
                     .retrieve()
                     .body(TenantDataSourceConfig.class);
 
@@ -49,8 +49,7 @@ public class CentralPlatformTenantService implements TenantMetadataService {
                 throw new TenantNotFoundException(tenantId);
             }
 
-            log.debug("Retrieved datasource config for tenant {}: dbType={}",
-                    tenantId, config.getDbType());
+            log.debug("Retrieved datasource config for tenant {}", tenantId);
             return config;
 
         } catch (Exception e) {
@@ -78,23 +77,46 @@ public class CentralPlatformTenantService implements TenantMetadataService {
     /**
      * Retrieves all active tenants from the central platform.
      * Used for batch operations like database migrations.
+     * <p>
+     * Uses /v1/internal/tenants/configs which returns Map<tenantKey,
+     * TenantDataSourceConfig>.
      *
      * @return list of all active tenants
      */
     public List<TenantInfo> getAllActiveTenants() {
-        log.debug("Fetching all active tenants from central platform");
+        log.debug("Fetching all active tenants from central platform via /v1/internal/tenants/configs");
 
         try {
-            List<TenantInfo> tenants = restClient.get()
-                    .uri("/api/tenants/active")
+            Map<String, TenantDataSourceConfig> configMap = restClient.get()
+                    .uri("/v1/internal/tenants/configs")
                     .retrieve()
-                    .body(new ParameterizedTypeReference<>() {});
+                    .body(new org.springframework.core.ParameterizedTypeReference<Map<String, TenantDataSourceConfig>>() {
+                    });
 
-            log.info("Retrieved {} active tenants", tenants != null ? tenants.size() : 0);
-            return tenants != null ? tenants : List.of();
+            if (configMap == null || configMap.isEmpty()) {
+                log.info("No tenant configs returned from central platform");
+                return List.of();
+            }
+
+            List<TenantInfo> tenants = configMap.entrySet().stream()
+                    .map(entry -> {
+                        TenantDataSourceConfig config = entry.getValue();
+                        return TenantInfo.builder()
+                                .tenantId(entry.getKey())
+                                .name(entry.getKey()) // use key as name fallback
+                                .active(true)
+                                .jdbcUrl(config.getJdbcUrl())
+                                .username(config.getUsername())
+                                .password(config.getPassword())
+                                .build();
+                    })
+                    .collect(java.util.stream.Collectors.toList());
+
+            log.info("Retrieved {} active tenants", tenants.size());
+            return tenants;
 
         } catch (Exception e) {
-            log.error("Failed to fetch active tenants from central platform", e);
+            log.error("Failed to fetch active tenants from central platform: {}", e.getMessage());
             return List.of();
         }
     }

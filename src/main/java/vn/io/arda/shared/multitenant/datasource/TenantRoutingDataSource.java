@@ -10,10 +10,15 @@ import vn.io.arda.shared.multitenant.service.TenantMetadataService;
 import javax.sql.DataSource;
 
 /**
- * Dynamic routing DataSource that routes to different databases based on current tenant context.
+ * Dynamic routing DataSource that routes to different databases based on
+ * current tenant context.
  *
- * <p>This class extends Spring's AbstractRoutingDataSource to provide tenant-aware database routing.
- * It uses TenantContext to determine which database to connect to for each request.</p>
+ * <p>
+ * This class extends Spring's AbstractRoutingDataSource to provide tenant-aware
+ * database routing.
+ * It uses TenantContext to determine which database to connect to for each
+ * request.
+ * </p>
  *
  * @since 0.0.1
  */
@@ -25,14 +30,24 @@ public class TenantRoutingDataSource extends AbstractRoutingDataSource {
     private final TenantMetadataService tenantMetadataService;
 
     @Override
+    public void afterPropertiesSet() {
+        // Initialize with empty map to satisfy AbstractRoutingDataSource requirements
+        // and prevent "DataSources not resolved yet" error during health check init
+        setTargetDataSources(java.util.Collections.emptyMap());
+        super.afterPropertiesSet();
+    }
+
+    @Override
     protected Object determineCurrentLookupKey() {
         return TenantContext.getTenantId().orElse(null);
     }
 
     @Override
     protected DataSource determineTargetDataSource() {
-        // CRITICAL: Multi-tenant SaaS requires tenant context for ALL database operations
-        // Rejecting requests without tenant prevents data leakage and ensures proper isolation
+        // CRITICAL: Multi-tenant SaaS requires tenant context for ALL database
+        // operations
+        // Rejecting requests without tenant prevents data leakage and ensures proper
+        // isolation
         String tenantId = TenantContext.getTenantId()
                 .orElseThrow(() -> new vn.io.arda.shared.exception.InvalidTenantContextException(
                         "Tenant context is required but not set. Please provide X-Tenant-ID header or valid JWT token with tenant claim."));

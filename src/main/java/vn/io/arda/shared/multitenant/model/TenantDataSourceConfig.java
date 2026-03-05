@@ -1,5 +1,6 @@
 package vn.io.arda.shared.multitenant.model;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -16,45 +17,25 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class TenantDataSourceConfig {
 
+    @JsonAlias("tenantKey")
     private String tenantId;
     private String jdbcUrl;
+    @JsonAlias("dbUsername")
     private String username;
+    @JsonAlias("dbPassword")
     private String password;
     private String driverClassName;
-    private DatabaseType dbType;
-
-    public enum DatabaseType {
-        POSTGRESQL("org.postgresql.Driver"),
-        ORACLE("oracle.jdbc.OracleDriver");
-
-        private final String driverClass;
-
-        DatabaseType(String driverClass) {
-            this.driverClass = driverClass;
-        }
-
-        public String getDriverClass() {
-            return driverClass;
-        }
-
-        public static DatabaseType fromJdbcUrl(String jdbcUrl) {
-            if (jdbcUrl.startsWith("jdbc:postgresql")) {
-                return POSTGRESQL;
-            } else if (jdbcUrl.startsWith("jdbc:oracle")) {
-                return ORACLE;
-            }
-            throw new IllegalArgumentException("Unsupported JDBC URL: " + jdbcUrl);
-        }
-    }
 
     /**
      * Auto-detects driver class name from JDBC URL if not set.
      */
     public String getDriverClassName() {
         if (driverClassName == null && jdbcUrl != null) {
-            DatabaseType type = DatabaseType.fromJdbcUrl(jdbcUrl);
-            return type.getDriverClass();
+            if (jdbcUrl.startsWith("jdbc:postgresql")) {
+                return "org.postgresql.Driver";
+            }
         }
         return driverClassName;
     }
+
 }
